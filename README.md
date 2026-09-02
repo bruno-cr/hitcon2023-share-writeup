@@ -46,7 +46,7 @@ class SecretSharing:
 
 ## 3. Teoria necessária
 
-### 3.1 Shamir Secret Sharing e interpolação de Lagrange
+### 3.1 Shamir Secret Sharing
 
 O Shamir Secret Sharing (SSS) é um esquema de compartilhamento de segredos proposto por Shamir(1979). O objetivo é dividir um segredo em `n` partes (shares) de forma que sejam necessárias pelo menos `k` partes para reconstruí-lo (threshold), enquanto `k - 1` partes não fornecem nenhuma informação sobre o segredo.
 
@@ -62,30 +62,49 @@ onde $a_0$ é o segredo e os demais coeficientes são escolhidos aleatoriamente.
  
  O desafio fornece `n - 1` shares de um polinômio de grau `n - 1`, portanto em uma implementação correta do SSS essa quantidade não seria suficiente para determinar o segredo. No entanto, uma possível falha na forma que os coeficientes são escolhidos compromete a segurança do algoritmo e abre espaço para ataques, como será demonstrado posteriormente.
 
+### 3.2 Interpolação de Lagrange e aritmética modular
 
-### 3.2 Por que o valor `p-1` vira uma "testemunha" de erro
+A reconstrução do segredo a partir dos shares é realizada por meio da interpolação de Lagrange. Dado um conjunto suficiente de pontos, a técnica permite calcular o valor do polinômio em uma determinada posição sem a necessidade de resolver diretamente todos os seus coeficientes. Como o segredo corresponde a $f(0)$, basta calcular:
+
+$f(0) = \sum_{i=1}^{k} y_i L_i(0)$
+
+onde $y_i$ representa o valor de cada share e $L_i(0)$ é o peso correspondente ao ponto.
+
+No SSS essa interpolação utiliza aritmética modular, o que significa que as operações são realizadas considerando um módulo $p$ e os resultados são representados entre 0 e $p - 1$. Dois valores são congruentes módulo $p$ quando possuem o mesmo resto:
+
+$a \equiv b \pmod p$
+
+O uso de um módulo primo é importante porque garante a existência de inversos multiplicativos para todos os valores diferentes de zero. O inverso de $a$ módulo $p$ é um valor $a^{-1}$ que satisfaz:
+
+$a \cdot a^{-1} \equiv 1 \pmod p$
+
+Assim, as divisões necessárias na interpolação podem ser realizadas como multiplicações pelo inverso modular. Por exemplo, para módulo 7 o inverso de 3 é 5, pois:
+
+$3 \cdot 5 \equiv 1 \pmod 7$
+
+Além da reconstrução em um único módulo, o desafio utiliza diferentes valores de $p$. Para cada módulo, é possível obter uma informação sobre o segredo na forma de um resíduo:
+
+$S \equiv r_i \pmod{p_i}$
+
+Essas informações podem ser combinadas utilizando o Teorema Chinês de Resto (CRT). Quando os módulos são coprimos entre si, o CRT permite determinar um único valor módulo o produto dos módulos:
+
+$P = p_1p_2\cdots p_n$
+
+Como os $p_i$ utilizados são primos distintos, eles são coprimos entre si. Portanto, ao obter resíduos suficientes e garantir que $P > 2^{256}$ é possível determinar unicamente o segredo de 32 bytes, cujo valor está no intervalo $0 \leq S < 2^{256}$.
+
+Dessa forma, a interpolação de Lagrange permite trabalhar com os shares dentro de cada módulo, enquanto o CRT permite combinar as informações obtidas em diferentes módulos para reconstruir o segredo completo.
+
+### 3.3 Por que o valor `p-1` vira uma "testemunha" de erro
 
 O raciocínio central do ataque:
 
-> Se chutarmos um valor `a0` para o segredo, e usarmos esse chute
-> junto aos `n-1` pontos reais recebidos para reconstruir o
-> **polinômio completo** (todos os coeficientes, via Lagrange) — e
-> se **qualquer** coeficiente reconstruído der exatamente `p-1` —
-> então esse chute está **errado**, porque a implementação real
-> nunca produz `p-1` em nenhum coeficiente.
+> Se chutarmos um valor `a0` para o segredo, e usarmos esse chute junto aos `n-1` pontos reais recebidos para reconstruir o **polinômio completo** (todos os coeficientes, via Lagrange) — e se **qualquer** coeficiente reconstruído der exatamente `p-1` — então esse chute está **errado**, porque a implementação real nunca produz `p-1` em nenhum coeficiente.
 
-Repetindo esse teste para todo `a0` em `[0, p)`, e pedindo shares
-novas quando sobra mais de um candidato, converge-se para um único
-valor: `secret mod p`.
+Repetindo esse teste para todo `a0` em `[0, p)`, e pedindo shares novas quando sobra mais de um candidato, converge-se para um único valor: `secret mod p`.
 
-### 3.3 Escolha de módulos e reconstrução via CRT
+### 3.4 Escolha de módulos e reconstrução via CRT
 
-Cada rodada só recupera `secret mod p` para um `p` específico — uma
-fração da informação. Pelo **Teorema Chinês do Resto (CRT)**, com
-`secret mod p_1, secret mod p_2, ...` para primos coprimos entre si,
-reconstrói-se o segredo completo **desde que o produto de todos os
-primos ultrapasse o valor máximo possível do segredo** (aqui,
-`2^256`, por serem 32 bytes).
+Cada rodada só recupera `secret mod p` para um `p` específico — uma fração da informação. Pelo **Teorema Chinês do Resto (CRT)**, com `secret mod p_1, secret mod p_2, ...` para primos coprimos entre si, reconstrói-se o segredo completo **desde que o produto de todos os primos ultrapasse o valor máximo possível do segredo** (aqui, `2^256`, por serem 32 bytes).
 
 ---
 
@@ -239,6 +258,8 @@ corretamente e conferido byte a byte contra o valor original.
 
 - Código-fonte original do desafio: repositório de **maple3142** (autor), *"HITCON CTF 2023 / Share"*.
 - Cópia preservada com Dockerfile: [`cryptohack/ctf_archive`](https://github.com/cryptohack/ctf_archive/tree/main/HITCONCTF-2023-Share).
-- Write-up de referência: **0xAtticus**, *"[HITCON 2023] Share write-up"* — explica a vulnerabilidade original e apresenta uma solução em Sage com pipelining contra o servidor real.
+- NIST Digital Library of Mathematical Functions. Interpolation. Seção 3.3. Disponível em <https://dlmf.nist.gov/3.3>. Acesso em 02/09/2026.
 - SHAMIR, Adi. How to Share a Secret. Communications of the ACM, v. 22, n. 11, p. 612–613, 1979. DOI: 10.1145/359168.359176. Disponível em <https://dl.acm.org/doi/10.1145/359168.359176>. Acesso em 02/09/2026.
+- Weisstein, Eric W. Chinese Remainder Theorem. Wolfram MathWorld. Disponível em <https://mathworld.wolfram.com/ChineseRemainderTheorem.html>. Acesso em 02/09/2026.
+- Write-up de referência: **0xAtticus**, *"[HITCON 2023] Share write-up"* — explica a vulnerabilidade original e apresenta uma solução em Sage com pipelining contra o servidor real.
 - Assistência de IA: **Claude (Anthropic)** foi utilizado como ferramenta de apoio para (1) reimplementar a classe `SecretSharing` original em Python, preservando fielmente a lógica e o bug do servidor, adaptada para rodar como função local em vez de socket/servidor; e (2) converter a solução em SageMath do write-up de referência (uso de `GF(p)` e `lagrange_polynomial`) para uma reimplementação em Python puro (funções `lagrange_interpola_completo`, `poly_mul` e o teste de primalidade de Miller-Rabin em `demo_share_attack_texto.py`), eliminando a dependência de SageMath.
