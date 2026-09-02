@@ -1,8 +1,6 @@
 # HITCON CTF 2023 — Share (Crypto)
 
-Write-up e reprodução do desafio **Share**, categoria Cripto do
-HITCON CTF 2023, desenvolvido como avaliação (E1) da disciplina
-**Segurança Cibernética (CCO-04.2.01)** — PPGCC, UFSCar.
+Write-up e reprodução do desafio **Share**, categoria Cripto do HITCON CTF 2023, desenvolvido como avaliação (E1) da disciplina **Segurança Cibernética (CCO-04.2.01)** — PPGCC, UFSCar.
 
 ## Membros do grupo
 
@@ -18,21 +16,15 @@ HITCON CTF 2023, desenvolvido como avaliação (E1) da disciplina
 
 ## 1. Identificação do desafio e objetivo
 
-O desafio implementa **Shamir Secret Sharing (SSS)**: um servidor
-sorteia um segredo de 32 bytes (256 bits) e permite ao cliente
-solicitar "pedaços" (*shares*) desse segredo, escolhendo dois
-parâmetros — um primo `p` e uma quantidade `n` de pedaços
-(`13 < n < p`). O servidor gera um polinômio aleatório de grau
-`n-1`, com o segredo como termo independente, e devolve `n-1` pontos
-desse polinômio.
+Esse foi o desafio mais resolvido e mais acessível na categoria de criptografia do HITCON 2023 CTF. Nos artefatos fornecidos por maple3142 há a seguinte descrição:
 
-**Promessa de segurança do desafio:** com `n-1` pontos de um
-polinômio de grau `n-1`, não deveria sobrar nenhuma informação sobre
-o ponto que falta (`x=0`, o segredo) — essa é a garantia teórica
-"perfeita" do SSS.
+> I hope I actually implemented Shamir Secret Sharing correctly this year. I am pretty sure you won't be able to guess my secret even when I give you all but one share.
 
-**Objetivo:** demonstrar que essa promessa não se sustenta nesta
-implementação específica e recuperar o segredo completo.
+O desafio implementa **Shamir Secret Sharing (SSS)**: um servidor sorteia um segredo de 32 bytes (256 bits) e permite ao cliente solicitar "pedaços" (*shares*) desse segredo, escolhendo dois parâmetros — um número primo `p` e uma quantidade `n` de pedaços (`13 < n < p`). O servidor gera um polinômio aleatório de grau`n-1`, com o segredo como termo independente, e devolve `n-1` pontos desse polinômio.
+
+**Promessa de segurança do desafio:** com `n-1` pontos de um polinômio de grau `n-1`, não deveria sobrar nenhuma informação sobre o ponto que falta (`x=0`, o segredo) — essa é a garantia teórica "perfeita" do SSS.
+
+**Objetivo:** demonstrar que essa promessa não se sustenta nesta implementação específica e recuperar o segredo completo.
 
 ---
 
@@ -48,13 +40,7 @@ class SecretSharing:
         self.poly = [secret] + [getRandomRange(0, self.p - 1) for _ in range(n - 1)]
 ```
 
-`getRandomRange(a, b)` sorteia um inteiro em `[a, b-1]`. Logo,
-`getRandomRange(0, self.p - 1)` sorteia coeficientes em `[0, p-2]` —
-**o valor `p-1` nunca é sorteado**. É um erro de off-by-one (faltou
-um `+1` no segundo argumento), mas com consequência séria: a
-segurança "perfeita" do SSS depende dos coeficientes serem
-uniformemente aleatórios em todo o corpo `Z/pZ`. Como isso não é
-verdade aqui, informação sobre o segredo vaza.
+`getRandomRange(a, b)` sorteia um inteiro em `[a, b-1]`. Logo, `getRandomRange(0, self.p - 1)` sorteia coeficientes em `[0, p-2]` — **o valor `p-1` nunca é sorteado**. É um erro de off-by-one (faltou um `+1` no segundo argumento), mas com consequência séria: a segurança "perfeita" do SSS depende dos coeficientes serem uniformemente aleatórios em todo o corpo `Z/pZ`. Como isso não é verdade aqui, informação sobre o segredo vaza.
 
 ---
 
@@ -62,11 +48,20 @@ verdade aqui, informação sobre o segredo vaza.
 
 ### 3.1 Shamir Secret Sharing e interpolação de Lagrange
 
-`k` pontos definem um único polinômio de grau `k-1`. Um segredo `S`
-é colocado como termo independente (`f(0) = S`), e cada participante
-recebe um ponto `(x_i, f(x_i))`. Com `k` pontos, reconstrói-se o
-polinômio via **interpolação de Lagrange**; com menos que `k`, em
-teoria, zero informação vaza.
+O Shamir Secret Sharing (SSS) é um esquema de compartilhamento de segredos proposto por Shamir(1979). O objetivo é dividir um segredo em `n` partes (shares) de forma que sejam necessárias pelo menos `k` partes para reconstruí-lo (threshold), enquanto `k - 1` partes não fornecem nenhuma informação sobre o segredo.
+
+ A ideia do algoritmo é representar o segredo como o termo independente de um polinômio de grau `k - 1`, definido como:
+ 
+$f(x) = a_0 + a_1x + a_2x^2 + ⋯ + a_{k−1}x^{k−1}$
+
+onde $a_0$ é o segredo e os demais coeficientes são escolhidos aleatoriamente. 
+
+ Para gerar os shares, são escolhidos valores distintos de $x$ e calculados os respectivos valores $f(x)$, sendo que cada share corresponde a um ponto ($x_i$, f($x_i$)) do polinômio. Considerando que $f(0) = a_0$, o segredo pode ser obtido ao calcular o polinômio no ponto $x = 0$. 
+ 
+ A segurança do método está na propriedade de que são necessários `k` pontos distintos para determinar unicamente um polinômio de grau `k - 1`. Para um número de pontos menor que `k` existem diferentes polinômios de grau `k - 1` compatíveis. Considerando que os coeficientes são escolhidos uniformemente, cada possível valor de $a_0$ tem igual probabilidade de ser o segredo, inviabilizando sua identificação. 
+ 
+ O desafio fornece `n - 1` shares de um polinômio de grau `n - 1`, portanto em uma implementação correta do SSS essa quantidade não seria suficiente para determinar o segredo. No entanto, uma possível falha na forma que os coeficientes são escolhidos compromete a segurança do algoritmo e abre espaço para ataques, como será demonstrado posteriormente.
+
 
 ### 3.2 Por que o valor `p-1` vira uma "testemunha" de erro
 
@@ -242,19 +237,8 @@ corretamente e conferido byte a byte contra o valor original.
 
 ## 8. Referências
 
-- Código-fonte original do desafio: repositório de **maple3142**
-  (autor), *"HITCON CTF 2023 / Share"*.
+- Código-fonte original do desafio: repositório de **maple3142** (autor), *"HITCON CTF 2023 / Share"*.
 - Cópia preservada com Dockerfile: [`cryptohack/ctf_archive`](https://github.com/cryptohack/ctf_archive/tree/main/HITCONCTF-2023-Share).
-- Write-up de referência: **0xAtticus**, *"[HITCON 2023] Share
-  write-up"* — explica a vulnerabilidade original e apresenta uma
-  solução em Sage com pipelining contra o servidor real.
-- Assistência de IA: **Claude (Anthropic)** foi utilizado como
-  ferramenta de apoio para (1) reimplementar a classe `SecretSharing`
-  original em Python, preservando fielmente a lógica e o bug do
-  servidor, adaptada para rodar como função local em vez de
-  socket/servidor; e (2) converter a solução em SageMath do write-up
-  de referência (uso de `GF(p)` e `lagrange_polynomial`) para uma
-  reimplementação em Python puro (funções
-  `lagrange_interpola_completo`, `poly_mul` e o teste de primalidade
-  de Miller-Rabin em `demo_share_attack_texto.py`), eliminando a
-  dependência de SageMath.
+- Write-up de referência: **0xAtticus**, *"[HITCON 2023] Share write-up"* — explica a vulnerabilidade original e apresenta uma solução em Sage com pipelining contra o servidor real.
+- SHAMIR, Adi. How to Share a Secret. Communications of the ACM, v. 22, n. 11, p. 612–613, 1979. DOI: 10.1145/359168.359176. Disponível em <https://dl.acm.org/doi/10.1145/359168.359176>. Acesso em 02/09/2026.
+- Assistência de IA: **Claude (Anthropic)** foi utilizado como ferramenta de apoio para (1) reimplementar a classe `SecretSharing` original em Python, preservando fielmente a lógica e o bug do servidor, adaptada para rodar como função local em vez de socket/servidor; e (2) converter a solução em SageMath do write-up de referência (uso de `GF(p)` e `lagrange_polynomial`) para uma reimplementação em Python puro (funções `lagrange_interpola_completo`, `poly_mul` e o teste de primalidade de Miller-Rabin em `demo_share_attack_texto.py`), eliminando a dependência de SageMath.
