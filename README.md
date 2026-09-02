@@ -16,15 +16,15 @@ Write-up e reprodução do desafio **Share**, categoria Cripto do HITCON CTF 202
 
 ## 1. Identificação do desafio e objetivo
 
-Esse foi o desafio mais resolvido e mais acessível na categoria de criptografia do HITCON 2023 CTF. Nos artefatos fornecidos por maple3142 há a seguinte descrição:
+Esse foi o desafio de criptografia, desenvolvido por maple3142. "Ele foi o mais resolvido e o mais acessível de todos cryptoos desafios do HITCON 2023 CTF"(0XATTICUS, 2023, tradução nossa). Nos artefatos fornecidos por há a seguinte descrição:
 
-> I hope I actually implemented Shamir Secret Sharing correctly this year. I am pretty sure you won't be able to guess my secret even when I give you all but one share.
+"I hope I actually implemented Shamir Secret Sharing correctly this year. I am pretty sure you won't be able to guess my secret even when I give you all but one share"(0XATTICUS, 2023).
 
-O desafio implementa **Shamir Secret Sharing (SSS)**: um servidor sorteia um segredo de 32 bytes (256 bits) e permite ao cliente solicitar "pedaços" (*shares*) desse segredo, escolhendo dois parâmetros — um número primo `p` e uma quantidade `n` de pedaços (`13 < n < p`). O servidor gera um polinômio aleatório de grau`n-1`, com o segredo como termo independente, e devolve `n-1` pontos desse polinômio.
+O desafio implementa **Shamir Secret Sharing (SSS)**: um servidor sorteia um segredo de 32 bytes (256 bits), o converte para inteiro e permite ao cliente solicitar "pedaços" (*shares*) desse segredo, escolhendo dois parâmetros — um número primo `p` e uma quantidade `n` de pedaços, sendo (`13 < n < p`). O servidor constrói um polinômio de grau máximo n-1, usando o segredo como termo independente e escolhendo aleatoriamente os demais coeficientes. Em seguida, avalia esse polinômio nos pontos 1, 2, ..., n e retorna apenas n-1 desses pontos, ocultando o último.
 
-**Promessa de segurança do desafio:** com `n-1` pontos de um polinômio de grau `n-1`, não deveria sobrar nenhuma informação sobre o ponto que falta (`x=0`, o segredo) — essa é a garantia teórica "perfeita" do SSS.
+**Promessa de segurança do desafio:** com apenas n-1 pontos de um polinômio de grau n-1, não é possível determinar unicamente o polinômio nem, consequentemente, o seu valor em x=0, que corresponde ao segredo. Essa é justamente a propriedade de segurança perfeita do Shamir's Secret Sharing (SSS): qualquer conjunto com menos de n pontos não fornece informação sobre o segredo.
 
-**Objetivo:** demonstrar que essa promessa não se sustenta nesta implementação específica e recuperar o segredo completo.
+**Objetivo:** demonstrar que a promessa de segurança do SSS não se sustenta nesta implementação específica e encontrar uma forma de recuperar o segredo completo a partir das informações disponibilizadas pelo servidor.
 
 ---
 
