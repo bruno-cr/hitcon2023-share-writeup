@@ -6,13 +6,13 @@ HITCON CTF 2023, desenvolvido como avaliação (E1) da disciplina
 
 ## Membros do grupo
 
-- Thayná Marostica Machado da Silva
 - Bruno Camargo Ribeiro
 - Bruno Hiroki Nagao Anhaia
-- Gabriel Alves Moreira
-- Jonathan Choy Rivera
 - Cilene Renata Real
 - Emerson Hermann Lira dos Santos
+- Gabriel Alves Moreira
+- Jonathan Choy Rivera
+- Thayná Marostica Machado da Silva
 
 ---
 
