@@ -30,6 +30,8 @@ O desafio implementa **Shamir Secret Sharing (SSS)**: um servidor sorteia um seg
 
 ## 2. A vulnerabilidade
 
+O código à seguir, evidencia a vulnerabilidade.
+
 Código-fonte relevante do servidor original:
 
 ```python
@@ -40,7 +42,11 @@ class SecretSharing:
         self.poly = [secret] + [getRandomRange(0, self.p - 1) for _ in range(n - 1)]
 ```
 
-`getRandomRange(a, b)` sorteia um inteiro em `[a, b-1]`. Logo, `getRandomRange(0, self.p - 1)` sorteia coeficientes em `[0, p-2]` — **o valor `p-1` nunca é sorteado**. É um erro de off-by-one (faltou um `+1` no segundo argumento), mas com consequência séria: a segurança "perfeita" do SSS depende dos coeficientes serem uniformemente aleatórios em todo o corpo `Z/pZ`. Como isso não é verdade aqui, informação sobre o segredo vaza.
+A função `getRandomRange(a, b)`, utilizada nessa implementação gera um número inteiro aleatório no intervalo `[a, b-1]`, ou seja, o segundo limite é exclusivo.
+Assim, quando o código executa: `getRandomRange(0, self.p - 1)`, os valores possíveis são:`0, 1, 2, ..., p-2`, nunca sendo sorteado `p-1`.
+No SSS, os coeficientes do polinômio utilizado para construir os compartilhamentos devem ser escolhidos uniformemente em todo o corpo finito `Z/pZ`, ou seja, cada valor entre `0` e `p-1` deve possuir a mesma probabilidade de ser escolhido.Essa propriedade é importante porque é justamente a aleatoriedade dos coeficientes que impede que um participante, ou um conjunto de participantes abaixo do limiar necessário, obtenha informação sobre o segredo.
+Na implementação analisada, entretanto, o valor `p-1` é sistematicamente excluído do processo de geração dos coeficientes. Portanto, a distribuição utilizada não corresponde à distribuição uniforme exigida pelo esquema teórico.
+O problema, portanto, não está simplesmente no fato de um valor estar faltando. A consequência mais importante é que a implementação deixa de satisfazer uma das premissas matemáticas utilizadas para garantir a segurança perfeita do SSS.
 
 ---
 
