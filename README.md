@@ -60,13 +60,22 @@ $$
 f(x) = a_0 + a_1x + a_2x^2 + \cdots + a_{k-1}x^{k-1}
 $$
 
-
-
-f(x)=a0​+a1​x+a2​x2+⋯+ak−1​xk−1
-
-$f(x)= a_0 + a_1x + a_2x^2 + ⋯ + a_{k−1}x^{k−1}$
-
 Nesse polinômio, \(a_0\) representa o segredo, enquanto os demais coeficientes \(a_1, a_2, \ldots, a_{k-1}\) são escolhidos aleatoriamente. Como \(f(0) = a_0\), o segredo corresponde ao valor do polinômio no ponto \(x=0\).
+
+Para gerar os shares, são selecionados valores distintos de \(x\) e calculados os respectivos valores de \(f(x)\). Cada share é, portanto, representado por um ponto do polinômio:
+$$
+(x_i, f(x_i))
+$$
+
+A reconstrução do segredo ocorre a partir de pelo menos k pontos distintos, utilizando interpolação polinomial. Como um polinômio de grau `k-1` é unicamente determinado por `k` pontos distintos, esses pontos são suficientes para reconstruir o polinômio e, consequentemente, obter o segredo por meio de \(f(0)\).
+
+A segurança do método está justamente na quantidade mínima de pontos necessária para determinar o polinômio. Com menos de `k` shares, existem múltiplos polinômios de grau `k-1` que são compatíveis com os pontos conhecidos. Quando os coeficientes são escolhidos uniformemente e de forma aleatória no corpo finito utilizado, cada possível valor para \(a_0\) é igualmente compatível com os shares disponíveis. Dessa forma, os participantes que possuem menos de k partes não obtêm informação sobre o segredo. Essa propriedade é conhecida como segurança perfeita.
+
+No desafio analisado neste trabalho, são fornecidos n - 1 shares de um polinômio de grau n - 1. Portanto, considerando um esquema SSS corretamente implementado com limiar n, essa quantidade de informações seria insuficiente para reconstruir o polinômio e determinar o segredo.
+
+Entretanto, a implementação apresenta uma falha na geração aleatória dos coeficientes do polinômio. Essa falha faz com que os coeficientes não sejam selecionados uniformemente em todo o corpo finito, violando uma das condições necessárias para a garantia teórica de segurança perfeita do SSS. Consequentemente, embora o número de shares disponíveis seja inferior ao limiar necessário para a reconstrução convencional, a implementação pode apresentar um vazamento de informação sobre o segredo.
+
+A partir dessa vulnerabilidade, torna-se possível explorar a distribuição não uniforme dos coeficientes para obter informações que não deveriam estar disponíveis com apenas n - 1 shares. A natureza dessa falha e o método utilizado para explorá-la serão demonstrados nas etapas seguintes.
 
 
 ### 3.2 Interpolação de Lagrange e aritmética modular
