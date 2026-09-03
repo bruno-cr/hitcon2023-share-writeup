@@ -126,7 +126,27 @@ Repetindo esse teste para todo `a0` em `[0, p)`, e pedindo shares novas quando s
 
 ### 3.4 Escolha de módulos e reconstrução via CRT
 
-Cada rodada só recupera `secret mod p` para um `p` específico — uma fração da informação. Pelo **Teorema Chinês do Resto (CRT)**, com `secret mod p_1, secret mod p_2, ...` para primos coprimos entre si, reconstrói-se o segredo completo **desde que o produto de todos os primos ultrapasse o valor máximo possível do segredo** (aqui, `2^256`, por serem 32 bytes).
+Em cada rodada do ataque, é possível obter uma informação parcial sobre o segredo na forma de secret mod p, para um determinado primo \(p\). Esse resultado representa apenas o resto da divisão do segredo por esse módulo e, isoladamente, não é suficiente para determinar o valor completo do segredo.
+
+Para combinar essas informações parciais, utiliza-se o Teorema Chinês do Resto (CRT — Chinese Remainder Theorem). Considerando diferentes primos \(p_1, p_2, \ldots, p_m\), coprimos entre si, e conhecendo os respectivos valores:
+
+$$
+\mathit{secret} \bmod p_1, \quad \mathit{secret} \bmod p_2, \quad \ldots, \quad \mathit{secret} \bmod p_m
+$$
+
+o CRT permite reconstruir um único valor de \(secret\) módulo:
+
+$$
+P = p_1 p_2 \cdots p_m
+$$
+
+A reconstrução corresponde ao segredo completo quando o produto dos módulos utilizados é maior que o maior valor possível para o segredo. Neste desafio, o segredo possui 32 bytes, portanto seu valor máximo está limitado a \(2^{256}-1\). Assim, é suficiente selecionar módulos primos de modo que:
+
+$$
+p_1 p_2 \cdots p_m > 2^{256}
+$$
+
+Dessa forma, embora cada rodada forneça apenas uma fração da informação sobre o segredo, a combinação dos resultados obtidos para diferentes módulos permite reconstruir unicamente o valor original. Esse processo constitui a etapa final do ataque: obter sucessivos valores secret mod p, acumular informação suficiente e utilizar o CRT para recuperar o segredo completo.​
 
 ---
 
