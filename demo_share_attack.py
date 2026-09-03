@@ -96,16 +96,25 @@ def lagrange_interpola_completo(pontos, p):
 # 4) O ataque: descobrir secret mod p usando a testemunha (p-1)
 # -----------------------------------------------------------------
 
-def recupera_secret_mod_p(secret_real, p, n=14, max_consultas=200):
+def recupera_secret_mod_p(secret_real, p, n=14, max_consultas=200, verboso=False):
     """Forca bruta de a0 (candidato a `secret mod p`), eliminando
     candidatos que produzem algum coeficiente igual a p-1 -- valor
-    que a implementacao com bug NUNCA poderia gerar."""
+    que a implementacao com bug NUNCA poderia gerar.
+
+    Se verboso=True, imprime uma tabela mostrando, rodada a rodada,
+    quantos candidatos foram eliminados e quantos restam -- util para
+    apresentacao com primos pequenos (a tabela fica ilegivel se p for
+    grande, entao so ative verboso para p pequeno)."""
     candidatos = set(range(p))
     consultas = 0
+
+    if verboso:
+        print(f"    Inicio: {len(candidatos)} candidatos possiveis -> {sorted(candidatos)}")
 
     while len(candidatos) > 1 and consultas < max_consultas:
         shares = servidor_local(secret_real, p, n)  # consulta o "servidor"
         consultas += 1
+        antes = set(candidatos)
 
         for a0 in list(candidatos):
             pontos = [(0, a0)] + [(i + 1, shares[i]) for i in range(n - 1)]
@@ -113,6 +122,11 @@ def recupera_secret_mod_p(secret_real, p, n=14, max_consultas=200):
             # se QUALQUER coeficiente (exceto a0) for p-1, esse a0 e impossivel
             if (p - 1) in poly[1:]:
                 candidatos.discard(a0)
+
+        if verboso:
+            eliminados = sorted(antes - candidatos)
+            print(f"    Rodada {consultas}: eliminou {len(eliminados)} candidato(s) "
+                  f"{eliminados} | sobraram {len(candidatos)} -> {sorted(candidatos)}")
 
     assert len(candidatos) == 1, f"Nao convergiu para 1 candidato (sobraram {len(candidatos)}) apos {consultas} consultas"
     return candidatos.pop(), consultas
@@ -163,12 +177,16 @@ if __name__ == "__main__":
     print(f"Produto dos primos: {produto}\n")
 
     restos = []
+    LIMITE_VERBOSO = 50  # so imprime a tabela rodada-a-rodada se p <= esse valor
     for p in primos:
-        r, n_consultas = recupera_secret_mod_p(secret_real, p, n=14)
+        print(f"  p={p}:")
+        r, n_consultas = recupera_secret_mod_p(
+            secret_real, p, n=14, verboso=(p <= LIMITE_VERBOSO)
+        )
         esperado = secret_real % p
         status = "OK" if r == esperado else "ERRO"
-        print(f"  p={p:3d} -> secret mod p = {r:3d} (esperado {esperado:3d}) "
-              f"[{status}] ({n_consultas} consulta(s))")
+        print(f"    -> secret mod p = {r:3d} (esperado {esperado:3d}) "
+              f"[{status}] ({n_consultas} consulta(s))\n")
         restos.append(r)
 
     segredo_reconstruido = crt(restos, primos)
