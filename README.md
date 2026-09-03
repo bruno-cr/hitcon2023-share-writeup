@@ -56,6 +56,11 @@ O problema, portanto, não está simplesmente no fato de um valor estar faltando
 O Shamir Secret Sharing (SSS) é um esquema criptográfico de compartilhamento de segredos proposto por Adi Shamir em 1979. Seu objetivo é dividir um segredo em n partes, denominadas shares, de modo que seja necessário um número mínimo k dessas partes para reconstruí-lo. Esse número k é denominado limiar (threshold). Uma das principais propriedades do esquema é que qualquer conjunto com menos de k shares não deve fornecer nenhuma informação sobre o segredo.
 O funcionamento do SSS baseia-se na representação do segredo como o termo independente de um polinômio de grau `k - 1`, definido sobre um corpo finito: 
 
+$$
+f(x) = a_0 + a_1x + a_2x^2 + \cdots + a_{k-1}x^{k-1}
+$$
+
+
 
 f(x)=a0​+a1​x+a2​x2+⋯+ak−1​xk−1
 
