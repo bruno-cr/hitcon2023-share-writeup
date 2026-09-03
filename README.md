@@ -30,9 +30,7 @@ O desafio implementa **Shamir Secret Sharing (SSS)**: um servidor sorteia um seg
 
 ## 2. A vulnerabilidade
 
-O código à seguir, evidencia a vulnerabilidade.
-
-Código-fonte relevante do servidor original:
+O Código-fonte à seguir, relevante do servidor original, evidencia a vulnerabilidade:
 
 ```python
 class SecretSharing:
@@ -44,29 +42,23 @@ class SecretSharing:
 
 A função `getRandomRange(a, b)`, utilizada nessa implementação gera um número inteiro aleatório no intervalo `[a, b-1]`, ou seja, o segundo limite é exclusivo.
 Assim, quando o código executa: `getRandomRange(0, self.p - 1)`, os valores possíveis são:`0, 1, 2, ..., p-2`, nunca sendo sorteado `p-1`.
-No SSS, os coeficientes do polinômio utilizado para construir os compartilhamentos devem ser escolhidos uniformemente em todo o corpo finito `Z/pZ`, ou seja, cada valor entre `0` e `p-1` deve possuir a mesma probabilidade de ser escolhido.Essa propriedade é importante porque é justamente a aleatoriedade dos coeficientes que impede que um participante, ou um conjunto de participantes abaixo do limiar necessário, obtenha informação sobre o segredo.
+No SSS, os coeficientes do polinômio utilizado para construir os compartilhamentos devem ser escolhidos uniformemente em todo o corpo finito `Z/pZ`, ou seja, cada valor entre `0` e `p-1` deve possuir a mesma probabilidade de ser escolhido.
+Essa propriedade é importante porque é justamente a aleatoriedade dos coeficientes que impede que um participante, ou um conjunto de participantes abaixo do limiar necessário, obtenha informação sobre o segredo.
 Na implementação analisada, entretanto, o valor `p-1` é sistematicamente excluído do processo de geração dos coeficientes. Portanto, a distribuição utilizada não corresponde à distribuição uniforme exigida pelo esquema teórico.
 O problema, portanto, não está simplesmente no fato de um valor estar faltando. A consequência mais importante é que a implementação deixa de satisfazer uma das premissas matemáticas utilizadas para garantir a segurança perfeita do SSS.
 
 ---
 
-## 3. Teoria necessária
+## 3. Referencial Teórico
 
 ### 3.1 Shamir Secret Sharing
 
-O Shamir Secret Sharing (SSS) é um esquema de compartilhamento de segredos proposto por Shamir(1979). O objetivo é dividir um segredo em `n` partes (shares) de forma que sejam necessárias pelo menos `k` partes para reconstruí-lo (threshold), enquanto `k - 1` partes não fornecem nenhuma informação sobre o segredo.
-
- A ideia do algoritmo é representar o segredo como o termo independente de um polinômio de grau `k - 1`, definido como:
- 
+O Shamir Secret Sharing (SSS) é um esquema criptográfico de compartilhamento de segredos proposto por Adi Shamir em 1979. Seu objetivo é dividir um segredo em n partes, denominadas shares, de modo que seja necessário um número mínimo k dessas partes para reconstruí-lo. Esse número k é denominado limiar (threshold). Uma das principais propriedades do esquema é que qualquer conjunto com menos de k shares não deve fornecer nenhuma informação sobre o segredo.
+O funcionamento do SSS baseia-se na representação do segredo como o termo independente de um polinômio de grau `k - 1`, definido sobre um corpo finito: 
 $f(x) = a_0 + a_1x + a_2x^2 + ⋯ + a_{k−1}x^{k−1}$
 
-onde $a_0$ é o segredo e os demais coeficientes são escolhidos aleatoriamente. 
+Nesse polinômio, \(a_0\) representa o segredo, enquanto os demais coeficientes \(a_1, a_2, \ldots, a_{k-1}\) são escolhidos aleatoriamente. Como \(f(0) = a_0\), o segredo corresponde ao valor do polinômio no ponto \(x=0\).
 
- Para gerar os shares, são escolhidos valores distintos de $x$ e calculados os respectivos valores $f(x)$, sendo que cada share corresponde a um ponto ($x_i$, f($x_i$)) do polinômio. Considerando que $f(0) = a_0$, o segredo pode ser obtido ao calcular o polinômio no ponto $x = 0$. 
- 
- A segurança do método está na propriedade de que são necessários `k` pontos distintos para determinar unicamente um polinômio de grau `k - 1`. Para um número de pontos menor que `k` existem diferentes polinômios de grau `k - 1` compatíveis. Considerando que os coeficientes são escolhidos uniformemente, cada possível valor de $a_0$ tem igual probabilidade de ser o segredo, inviabilizando sua identificação. 
- 
- O desafio fornece `n - 1` shares de um polinômio de grau `n - 1`, portanto em uma implementação correta do SSS essa quantidade não seria suficiente para determinar o segredo. No entanto, uma possível falha na forma que os coeficientes são escolhidos compromete a segurança do algoritmo e abre espaço para ataques, como será demonstrado posteriormente.
 
 ### 3.2 Interpolação de Lagrange e aritmética modular
 
