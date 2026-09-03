@@ -124,7 +124,7 @@ O raciocínio central do ataque:
 
 Repetindo esse teste para todo `a0` em `[0, p)`, e pedindo shares novas quando sobra mais de um candidato, converge-se para um único valor: `secret mod p`.
 
-### 3.4 Escolha de módulos e reconstrução via CRT
+### 3.4 Escolha de módulos e reconstrução via CRT 
 
 Em cada rodada do ataque, é possível obter uma informação parcial sobre o segredo na forma de secret mod p, para um determinado primo \(p\). Esse resultado representa apenas o resto da divisão do segredo por esse módulo e, isoladamente, não é suficiente para determinar o valor completo do segredo.
 
