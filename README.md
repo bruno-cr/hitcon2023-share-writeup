@@ -20,11 +20,11 @@ Esse foi o desafio de criptografia, desenvolvido por maple3142. "Ele foi o mais 
 
 "I hope I actually implemented Shamir Secret Sharing correctly this year. I am pretty sure you won't be able to guess my secret even when I give you all but one share"(0XATTICUS, 2023).
 
-O desafio implementa **Shamir Secret Sharing (SSS)**: um servidor sorteia um segredo de 32 bytes (256 bits), o converte para inteiro e permite ao cliente solicitar "pedaços" (*shares*) desse segredo, escolhendo dois parâmetros — um número primo `p` e uma quantidade `n` de pedaços, sendo (`13 < n < p`). O servidor constrói um polinômio de grau máximo n-1, usando o segredo como termo independente e escolhendo aleatoriamente os demais coeficientes. Em seguida, avalia esse polinômio nos pontos 1, 2, ..., n e retorna apenas n-1 desses pontos, ocultando o último.
+O desafio implementa **Shamir Secret Sharing (SSS)**: um servidor sorteia um segredo de 32 bytes (256 bits) e permite ao cliente solicitar "pedaços" (*shares*) desse segredo, escolhendo dois parâmetros — um primo `p` e uma quantidade `n` de pedaços (`int(13.37) < n < p` no código original, que equivale a `13 < n < p` — `int()` trunca `13.37` para `13`, provável trocadilho do autor com "1337"/"leet"). O servidor gera um polinômio aleatório de grau `n-1`, com o segredo como termo independente, e devolve `n-1` pontos desse polinômio.
 
-**Promessa de segurança do desafio:** com apenas n-1 pontos de um polinômio de grau n-1, não é possível determinar unicamente o polinômio nem, consequentemente, o seu valor em x=0, que corresponde ao segredo. Essa é justamente a propriedade de segurança perfeita do Shamir's Secret Sharing (SSS): qualquer conjunto com menos de n pontos não fornece informação sobre o segredo.
+**Promessa de segurança do desafio:** com `n-1` pontos de um polinômio de grau `n-1`, não deveria sobrar nenhuma informação sobre o ponto que falta (`x=0`, o segredo) — essa é a garantia teórica "perfeita" do SSS.
 
-**Objetivo:** demonstrar que a promessa de segurança do SSS não se sustenta nesta implementação específica e encontrar uma forma de recuperar o segredo completo a partir das informações disponibilizadas pelo servidor.
+**Objetivo:** demonstrar que essa promessa não se sustenta nesta implementação específica e recuperar o segredo completo.
 
 ---
 
@@ -241,20 +241,26 @@ script principal e adiciona:
 
 ## 6. Evidência de reprodução
 
-Saída real da execução de `demo_share_attack.py`:
+O script agora imprime, para cada primo, uma tabela rodada a rodada mostrando os candidatos sendo eliminados até sobrar um único valor — útil tanto como evidência mais detalhada quanto como apoio visual na apresentação. Trecho representativo da saída real (primo `p=17` completo; os demais primos seguem o mesmo formato, omitidos aqui por espaço — a saída completa tem ~100 linhas e pode ser reproduzida rodando o script):
 
 ```
 Segredo real (para conferencia): 123456789
 Primos escolhidos: [17, 19, 23, 29, 31, 37, 41]
 Produto dos primos: 10131543907
 
-  p= 17 -> secret mod p =   1 (esperado   1) [OK] (8 consulta(s))
-  p= 19 -> secret mod p =  14 (esperado  14) [OK] (5 consulta(s))
-  p= 23 -> secret mod p =  11 (esperado  11) [OK] (6 consulta(s))
-  p= 29 -> secret mod p =  19 (esperado  19) [OK] (14 consulta(s))
-  p= 31 -> secret mod p =   2 (esperado   2) [OK] (19 consulta(s))
-  p= 37 -> secret mod p =  36 (esperado  36) [OK] (13 consulta(s))
-  p= 41 -> secret mod p =   8 (esperado   8) [OK] (20 consulta(s))
+  p=17:
+    Inicio: 17 candidatos possiveis -> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+    Rodada 1: eliminou 10 candidato(s) [2, 3, 4, 5, 6, 8, 10, 11, 13, 15] | sobraram 7 -> [0, 1, 7, 9, 12, 14, 16]
+    Rodada 2: eliminou 3 candidato(s) [0, 7, 16] | sobraram 4 -> [1, 9, 12, 14]
+    Rodada 3: eliminou 2 candidato(s) [9, 12] | sobraram 2 -> [1, 14]
+    Rodada 4: eliminou 0 candidato(s) [] | sobraram 2 -> [1, 14]
+    Rodada 5: eliminou 0 candidato(s) [] | sobraram 2 -> [1, 14]
+    Rodada 6: eliminou 0 candidato(s) [] | sobraram 2 -> [1, 14]
+    Rodada 7: eliminou 0 candidato(s) [] | sobraram 2 -> [1, 14]
+    Rodada 8: eliminou 1 candidato(s) [14] | sobraram 1 -> [1]
+    -> secret mod p =   1 (esperado   1) [OK] (8 consulta(s))
+
+  [... primos 19, 23, 29, 31, 37, 41 seguem o mesmo formato ...]
 
 Segredo reconstruido via CRT: 123456789
 Segredo real:                 123456789
@@ -263,6 +269,22 @@ Segredo real:                 123456789
 tempo total: 0.26 s
 ```
 
+Resumo dos 7 primos (resultado final de cada tabela completa):
+
+| Primo (`p`) | Resto (`secret mod p`) | Consultas até convergir |
+|---|---|---|
+| 17 | 1 | 8 |
+| 19 | 14 | 5 |
+| 23 | 11 | 6 |
+| 29 | 19 | 14 |
+| 31 | 2 | 19 |
+| 37 | 36 | 13 |
+| 41 | 8 | 20 |
+
+**Nota sobre o número de consultas variar por primo:** o processo é probabilístico — um candidato errado só é eliminado quando o número impossível (`p-1`) aparece por acaso em algum coeficiente reconstruído naquela rodada. Às vezes isso demora mais (`p=31` precisou de 19 rodadas), às vezes menos (`p=19` precisou de só 5) — não é um erro, é o comportamento esperado do ataque.
+
+A tabela detalhada só é impressa para primos pequenos (`p <= 50`, via o parâmetro `verboso` de `recupera_secret_mod_p`), para não poluir a saída caso o script seja usado com primos maiores.
+
 Evidência adicional de escala real, com `demo_share_attack_texto.py`:
 
 | Entrada | Tamanho | Primos necessários | Tempo |
@@ -270,8 +292,7 @@ Evidência adicional de escala real, com `demo_share_attack_texto.py`:
 | `"senha de teste 2026"` (20 chars) | 151 bits | 26 primos | ~5,4s |
 | 32 bytes (tamanho real do desafio original) | 256 bits | ~40 primos | ~17-18s |
 
-Em ambos os casos o texto/segredo de entrada foi recuperado
-corretamente e conferido byte a byte contra o valor original.
+Em ambos os casos o texto/segredo de entrada foi recuperado corretamente e conferido byte a byte contra o valor original.
 
 ---
 
