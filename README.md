@@ -16,7 +16,7 @@ Write-up e reprodução do desafio **Share**, categoria Cripto do HITCON CTF 202
 
 ## 1. Identificação do desafio e objetivo
 
-Esse foi o desafio de criptografia, desenvolvido por maple3142. "Ele foi o mais resolvido e o mais acessível de todos cryptoos desafios do HITCON 2023 CTF"(0XATTICUS, 2023, tradução nossa). Nos artefatos fornecidos por há a seguinte descrição:
+Esse foi o desafio de criptografia, desenvolvido por maple3142. "Ele foi o mais resolvido e o mais acessível de todos os desafios de criptografia do HITCON 2023 CTF"(0XATTICUS, 2023, tradução nossa). Nos artefatos fornecidos há a seguinte descrição:
 
 "I hope I actually implemented Shamir Secret Sharing correctly this year. I am pretty sure you won't be able to guess my secret even when I give you all but one share"(0XATTICUS, 2023).
 
