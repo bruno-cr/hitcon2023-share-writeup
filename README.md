@@ -290,7 +290,7 @@ Evidência adicional de escala real, com `demo_share_attack_texto.py`:
 | Entrada | Tamanho | Primos necessários | Tempo |
 |---|---|---|---|
 | `"senha de teste 2026"` (20 chars) | 151 bits | 26 primos | ~5,4s |
-| 32 bytes (tamanho real do desafio original) | 256 bits | ~40 primos | ~17-18s |
+| `"abcdefghijklmnopqrstuvwxyz012345"` (32 chars, mesmo tamanho do segredo original) | 256 bits | ~40 primos | 18,72s (testado pelo grupo) |
 
 Em ambos os casos o texto/segredo de entrada foi recuperado corretamente e conferido byte a byte contra o valor original.
 
