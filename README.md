@@ -10,19 +10,20 @@ Write-up e reprodução do desafio **Share**, categoria Cripto do HITCON CTF 202
 - Emerson Hermann Lira dos Santos
 - Gabriel Alves Moreira
 - Jonathan Choy Rivera
+- Stephanie Maria Braga
 - Thayná Marostica Machado da Silva
 
 ---
 
 ## 1. Identificação do desafio e objetivo
 
-Esse foi o desafio de criptografia, desenvolvido por maple3142. "Ele foi o mais resolvido e o mais acessível de todos os desafios de criptografia do HITCON 2023 CTF"(0XATTICUS, 2023, tradução nossa). Nos artefatos fornecidos há a seguinte descrição:
+Esse foi o desafio de criptografia, desenvolvido por maple3142. "Ele foi o mais resolvido e o mais acessível de todos os desafios de criptografia do HITCON 2023 CTF" (0XATTICUS, 2023, tradução nossa). Nos artefatos fornecidos, há a seguinte descrição:
 
-"I hope I actually implemented Shamir Secret Sharing correctly this year. I am pretty sure you won't be able to guess my secret even when I give you all but one share"(0XATTICUS, 2023).
+"I hope I actually implemented Shamir Secret Sharing correctly this year. I am pretty sure you won't be able to guess my secret even when I give you all but one share" (0XATTICUS, 2023).
 
-O desafio implementa **Shamir Secret Sharing (SSS)**: um servidor sorteia um segredo de 32 bytes (256 bits) e permite ao cliente solicitar "pedaços" (*shares*) desse segredo, escolhendo dois parâmetros — um primo `p` e uma quantidade `n` de pedaços (`int(13.37) < n < p` no código original, que equivale a `13 < n < p` — `int()` trunca `13.37` para `13`, provável trocadilho do autor com "1337"/"leet"). O servidor gera um polinômio aleatório de grau `n-1`, com o segredo como termo independente, e devolve `n-1` pontos desse polinômio.
+O desafio implementa **Shamir Secret Sharing (SSS)**: um servidor sorteia um segredo de 32 bytes (256 bits) e permite ao cliente solicitar "pedaços" (*shares*) desse segredo, escolhendo dois parâmetros — um primo `p` e uma quantidade `n` de pedaços (`int(13.37) < n < p` no código original, que equivale a `13 < n < p` — `int()` trunca `13.37` para `13`, provável trocadilho do autor com "1337"/"leet"). O servidor gera um polinômio aleatório de grau $n-1$, com o segredo como termo independente, e devolve $n-1$ pontos desse polinômio.
 
-**Promessa de segurança do desafio:** com `n-1` pontos de um polinômio de grau `n-1`, não deveria sobrar nenhuma informação sobre o ponto que falta (`x=0`, o segredo) — essa é a garantia teórica "perfeita" do SSS.
+**Promessa de segurança do desafio:** com $n-1$ pontos de um polinômio de grau $n-1$, não deveria sobrar nenhuma informação sobre o ponto que falta ($x=0$, o segredo) — essa é a garantia teórica "perfeita" do SSS.
 
 **Objetivo:** demonstrar que essa promessa não se sustenta nesta implementação específica e recuperar o segredo completo.
 
@@ -30,7 +31,7 @@ O desafio implementa **Shamir Secret Sharing (SSS)**: um servidor sorteia um seg
 
 ## 2. A vulnerabilidade
 
-O Código-fonte à seguir, relevante do servidor original, evidencia a vulnerabilidade:
+O código-fonte a seguir, relevante do servidor original, evidencia a vulnerabilidade:
 
 ```python
 class SecretSharing:
@@ -40,9 +41,9 @@ class SecretSharing:
         self.poly = [secret] + [getRandomRange(0, self.p - 1) for _ in range(n - 1)]
 ```
 
-A função `getRandomRange(a, b)`, utilizada nessa implementação gera um número inteiro aleatório no intervalo `[a, b-1]`, ou seja, o segundo limite é exclusivo.
+A função `getRandomRange(a, b)`, utilizada nessa implementação, gera um número inteiro aleatório no intervalo `[a, b-1]`, ou seja, o segundo limite é exclusivo.
 
-Assim, quando o código executa: `getRandomRange(0, self.p - 1)`, os valores possíveis são:`0, 1, 2, ..., p-2`, nunca sendo sorteado `p-1`.
+Assim, quando o código executa: `getRandomRange(0, self.p - 1)`, os valores possíveis são: `0, 1, 2, ..., p-2`, nunca sendo sorteado `p-1`.
 No SSS, os coeficientes do polinômio utilizado para construir os compartilhamentos devem ser escolhidos uniformemente em todo o corpo finito `Z/pZ`, ou seja, cada valor entre `0` e `p-1` deve possuir a mesma probabilidade de ser escolhido.
 
 Essa propriedade é importante porque é justamente a aleatoriedade dos coeficientes que impede que um participante, ou um conjunto de participantes abaixo do limiar necessário, obtenha informação sobre o segredo.
@@ -57,29 +58,30 @@ O problema, portanto, não está simplesmente no fato de um valor estar faltando
 
 ### 3.1 Shamir Secret Sharing
 
-O Shamir Secret Sharing (SSS) é um esquema criptográfico de compartilhamento de segredos proposto por Adi Shamir em 1979. Seu objetivo é dividir um segredo em n partes, denominadas shares, de modo que seja necessário um número mínimo k dessas partes para reconstruí-lo. Esse número k é denominado limiar (threshold). Uma das principais propriedades do esquema é que qualquer conjunto com menos de k shares não deve fornecer nenhuma informação sobre o segredo.
-O funcionamento do SSS baseia-se na representação do segredo como o termo independente de um polinômio de grau `k - 1`, definido sobre um corpo finito: 
+O Shamir Secret Sharing (SSS) é um esquema criptográfico de compartilhamento de segredos proposto por Adi Shamir em 1979. Seu objetivo é dividir um segredo em n partes, denominadas shares, de modo que seja necessário um número mínimo $k$ dessas partes para reconstruí-lo. Esse número $k$ é denominado limiar (threshold). Uma das principais propriedades do esquema é que qualquer conjunto com menos de $k$ shares não deve fornecer nenhuma informação sobre o segredo.
+
+O funcionamento do SSS baseia-se na representação do segredo como o termo independente de um polinômio de grau $k - 1$, definido sobre um corpo finito:
 
 $$
 f(x) = a_0 + a_1x + a_2x^2 + \cdots + a_{k-1}x^{k-1}
 $$
 
-Nesse polinômio, \(a_0\) representa o segredo, enquanto os demais coeficientes \(a_1, a_2, \ldots, a_{k-1}\) são escolhidos aleatoriamente. Como \(f(0) = a_0\), o segredo corresponde ao valor do polinômio no ponto \(x=0\).
+Nesse polinômio, $a_0$ representa o segredo, enquanto os demais coeficientes $(a_1, a_2, \ldots, a_{k-1})$ são escolhidos aleatoriamente. Como $f(0) = a_0$, o segredo corresponde ao valor do polinômio no ponto $x=0$.
 
-Para gerar os shares, são selecionados valores distintos de \(x\) e calculados os respectivos valores de \(f(x)\). Cada share é, portanto, representado por um ponto do polinômio:
+Para gerar os shares, são selecionados valores distintos de $x$ e calculados os respectivos valores de $f(x)$. Cada share é, portanto, representado por um ponto do polinômio:
 $$
 (x_i, f(x_i))
 $$
 
-A reconstrução do segredo ocorre a partir de pelo menos k pontos distintos, utilizando interpolação polinomial. Como um polinômio de grau `k-1` é unicamente determinado por `k` pontos distintos, esses pontos são suficientes para reconstruir o polinômio e, consequentemente, obter o segredo por meio de \(f(0)\).
+A reconstrução do segredo ocorre a partir de pelo menos k pontos distintos, utilizando interpolação polinomial. Como um polinômio de grau $k-1$ é unicamente determinado por $k$ pontos distintos, esses pontos são suficientes para reconstruir o polinômio e, consequentemente, obter o segredo por meio de $f(0)$.
 
-A segurança do método está justamente na quantidade mínima de pontos necessária para determinar o polinômio. Com menos de `k` shares, existem múltiplos polinômios de grau `k-1` que são compatíveis com os pontos conhecidos. Quando os coeficientes são escolhidos uniformemente e de forma aleatória no corpo finito utilizado, cada possível valor para \(a_0\) é igualmente compatível com os shares disponíveis. Dessa forma, os participantes que possuem menos de k partes não obtêm informação sobre o segredo. Essa propriedade é conhecida como segurança perfeita.
+A segurança do método está justamente na quantidade mínima de pontos necessária para determinar o polinômio. Com menos de $k$ shares, existem múltiplos polinômios de grau $k-1$ que são compatíveis com os pontos conhecidos. Quando os coeficientes são escolhidos uniformemente e de forma aleatória no corpo finito utilizado, cada possível valor para $a_0$ é igualmente compatível com os shares disponíveis. Dessa forma, os participantes que possuem menos de k partes não obtêm informação sobre o segredo. Essa propriedade é conhecida como segurança perfeita.
 
-No desafio analisado neste trabalho, são fornecidos `n-1` shares de um polinômio de grau `n-1`. Portanto, considerando um esquema SSS corretamente implementado com limiar n, essa quantidade de informações seria insuficiente para reconstruir o polinômio e determinar o segredo.
+No desafio analisado neste trabalho, são fornecidos $n-1$ shares de um polinômio de grau $n-1$. Portanto, considerando um esquema SSS corretamente implementado com limiar n, essa quantidade de informações seria insuficiente para reconstruir o polinômio e determinar o segredo.
 
 Entretanto, a implementação apresenta uma falha na geração aleatória dos coeficientes do polinômio. Essa falha faz com que os coeficientes não sejam selecionados uniformemente em todo o corpo finito, violando uma das condições necessárias para a garantia teórica de segurança perfeita do SSS. Consequentemente, embora o número de shares disponíveis seja inferior ao limiar necessário para a reconstrução convencional, a implementação pode apresentar um vazamento de informação sobre o segredo.
 
-A partir dessa vulnerabilidade, torna-se possível explorar a distribuição não uniforme dos coeficientes para obter informações que não deveriam estar disponíveis com apenas `n-1` shares. A natureza dessa falha e o método utilizado para explorá-la serão demonstrados nas etapas seguintes.
+A partir dessa vulnerabilidade, torna-se possível explorar a distribuição não uniforme dos coeficientes para obter informações que não deveriam estar disponíveis com apenas $n-1$ shares. A natureza dessa falha e o método utilizado para explorá-la serão demonstrados nas etapas seguintes.
 
 
 ### 3.2 Interpolação de Lagrange e aritmética modular
@@ -92,7 +94,7 @@ $$
 
 onde $y_i$ representa o valor de cada share e $L_i(0)$ é o peso correspondente ao ponto.
 
-No SSS essa interpolação utiliza aritmética modular, o que significa que as operações são realizadas considerando um módulo $p$ e os resultados são representados entre 0 e $p - 1$. Dois valores são congruentes módulo $p$ quando possuem o mesmo resto:
+No SSS, essa interpolação utiliza aritmética modular, o que significa que as operações são realizadas considerando um módulo $p$ e os resultados são representados entre $0$ e $p - 1$. Dois valores são congruentes módulo $p$ quando possuem o mesmo resto:
 
 $a \equiv b \pmod p$
 
@@ -100,7 +102,7 @@ O uso de um módulo primo é importante porque garante a existência de inversos
 
 $a \cdot a^{-1} \equiv 1 \pmod p$
 
-Assim, as divisões necessárias na interpolação podem ser realizadas como multiplicações pelo inverso modular. Por exemplo, para módulo 7 o inverso de 3 é 5, pois:
+Assim, as divisões necessárias na interpolação podem ser realizadas como multiplicações pelo inverso modular. Por exemplo, para módulo 7, o inverso de 3 é 5, pois:
 
 $3 \cdot 5 \equiv 1 \pmod 7$
 
@@ -112,41 +114,41 @@ Essas informações podem ser combinadas utilizando o Teorema Chinês de Resto (
 
 $P = p_1p_2\cdots p_n$
 
-Como os $p_i$ utilizados são primos distintos, eles são coprimos entre si. Portanto, ao obter resíduos suficientes e garantir que $P > 2^{256}$ é possível determinar unicamente o segredo de 32 bytes, cujo valor está no intervalo $0 \leq S < 2^{256}$.
+Como os $p_i$ utilizados são primos distintos, eles são coprimos entre si. Portanto, ao obter resíduos suficientes e garantir que $P > 2^{256}$, é possível determinar unicamente o segredo de 32 bytes, cujo valor está no intervalo $0 \leq S < 2^{256}$.
 
 Dessa forma, a interpolação de Lagrange permite trabalhar com os shares dentro de cada módulo, enquanto o CRT permite combinar as informações obtidas em diferentes módulos para reconstruir o segredo completo.
 
-### 3.3 Por que o valor `p-1` vira uma "testemunha" de erro
+### 3.3 Por que o valor $p-1$ vira uma "testemunha" de erro
 
 O raciocínio central do ataque:
 
-> Se chutarmos um valor `a0` para o segredo, e usarmos esse chute junto aos `n-1` pontos reais recebidos para reconstruir o **polinômio completo** (todos os coeficientes, via Lagrange) — e se **qualquer** coeficiente reconstruído der exatamente `p-1` — então esse chute está **errado**, porque a implementação real nunca produz `p-1` em nenhum coeficiente.
+> Se chutarmos um valor $a_0$ para o segredo, e usarmos esse chute junto aos $n-1$ pontos reais recebidos para reconstruir o **polinômio completo** (todos os coeficientes, via Lagrange) — e se **qualquer** coeficiente reconstruído der exatamente $p-1$ — então esse chute está **errado**, porque a implementação real nunca produz $p-1$ em nenhum coeficiente.
 
-Repetindo esse teste para todo `a0` em `[0, p)`, e pedindo shares novas quando sobra mais de um candidato, converge-se para um único valor: `secret mod p`.
+Repetindo esse teste para todo $a_0$ em `[0, p)`, e pedindo shares novas quando sobra mais de um candidato, converge-se para um único valor: `secret mod p`.
 
-### 3.4 Escolha de módulos e reconstrução via CRT 
+### 3.4 Escolha de módulos e reconstrução via CRT
 
-Em cada rodada do ataque, é possível obter uma informação parcial sobre o segredo na forma de secret mod p, para um determinado primo \(p\). Esse resultado representa apenas o resto da divisão do segredo por esse módulo e, isoladamente, não é suficiente para determinar o valor completo do segredo.
+Em cada rodada do ataque, é possível obter uma informação parcial sobre o segredo na forma de `secret mod p`, para um determinado primo $p$. Esse resultado representa apenas o resto da divisão do segredo por esse módulo e, isoladamente, não é suficiente para determinar o valor completo do segredo.
 
-Para combinar essas informações parciais, utiliza-se o Teorema Chinês do Resto (CRT — Chinese Remainder Theorem). Considerando diferentes primos \(p_1, p_2, \ldots, p_m\), coprimos entre si, e conhecendo os respectivos valores:
+Para combinar essas informações parciais, utiliza-se o Teorema Chinês do Resto (CRT — Chinese Remainder Theorem). Considerando diferentes primos $p_1, p_2, \ldots, p_m$, coprimos entre si, e conhecendo os respectivos valores:
 
 $$
 \mathit{secret} \bmod p_1, \quad \mathit{secret} \bmod p_2, \quad \ldots, \quad \mathit{secret} \bmod p_m
 $$
 
-o CRT permite reconstruir um único valor de \(secret\) módulo:
+o CRT permite reconstruir um único valor de $\mathit{secret}$ módulo:
 
 $$
 P = p_1 p_2 \cdots p_m
 $$
 
-A reconstrução corresponde ao segredo completo quando o produto dos módulos utilizados é maior que o maior valor possível para o segredo. Neste desafio, o segredo possui 32 bytes, portanto seu valor máximo está limitado a \(2^{256}-1\). Assim, é suficiente selecionar módulos primos de modo que:
+A reconstrução corresponde ao segredo completo quando o produto dos módulos utilizados é maior que o maior valor possível para o segredo. Neste desafio, o segredo possui 32 bytes, portanto seu valor máximo está limitado a $2^{256}-1$. Assim, é suficiente selecionar módulos primos de modo que:
 
 $$
 p_1 p_2 \cdots p_m > 2^{256}
 $$
 
-Dessa forma, embora cada rodada forneça apenas uma fração da informação sobre o segredo, a combinação dos resultados obtidos para diferentes módulos permite reconstruir unicamente o valor original. Esse processo constitui a etapa final do ataque: obter sucessivos valores secret mod p, acumular informação suficiente e utilizar o CRT para recuperar o segredo completo.​
+Dessa forma, embora cada rodada forneça apenas uma fração da informação sobre o segredo, a combinação dos resultados obtidos para diferentes módulos permite reconstruir unicamente o valor original. Esse processo constitui a etapa final do ataque: obter sucessivos valores `secret mod p`, acumular informação suficiente e utilizar o CRT para recuperar o segredo completo.
 
 ---
 
@@ -309,7 +311,7 @@ Evidência adicional de escala real, com `demo_share_attack_texto.py`:
 | `"senha de teste 2026"` (20 chars) | 151 bits | 26 primos | ~5,4s |
 | `"abcdefghijklmnopqrstuvwxyz012345"` (32 chars, mesmo tamanho do segredo original) | 256 bits | ~40 primos | 18,72s (testado pelo grupo) |
 
-Em ambos os casos o texto/segredo de entrada foi recuperado corretamente e conferido byte a byte contra o valor original.
+Em ambos os casos, o texto/segredo de entrada foi recuperado corretamente e conferido byte a byte contra o valor original.
 
 ---
 
@@ -321,7 +323,7 @@ Em ambos os casos o texto/segredo de entrada foi recuperado corretamente e confe
   interpolação de Lagrange em Python puro e simulamos o servidor
   localmente — eliminando a necessidade de pipelining, já que não há
   latência de rede.
-- **Explicação didática ampliada da testemunha `p-1`** (Seção 3.2),
+- **Explicação didática ampliada da testemunha `p-1`** (Seção 3.3),
   detalhando o raciocínio passo a passo para quem não tem
   familiaridade prévia com SSS.
 - **Automação da escolha de primos + medição de custo em escala
