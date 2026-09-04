@@ -241,7 +241,13 @@ script principal e adiciona:
 
 ## 6. Evidência de reprodução
 
-O script agora imprime, para cada primo, uma tabela rodada a rodada mostrando os candidatos sendo eliminados até sobrar um único valor — útil tanto como evidência mais detalhada quanto como apoio visual na apresentação. Trecho representativo da saída real (primo `p=17` completo; os demais primos seguem o mesmo formato, omitidos aqui por espaço — a saída completa tem ~100 linhas e pode ser reproduzida rodando o script):
+O script agora imprime, para cada primo, uma tabela rodada a rodada
+mostrando os candidatos sendo eliminados até sobrar um único valor —
+útil tanto como evidência mais detalhada quanto como apoio visual na
+apresentação. Trecho representativo da saída real (primo `p=17`
+completo; os demais primos seguem o mesmo formato, omitidos aqui por
+espaço — a saída completa tem ~100 linhas e pode ser reproduzida
+rodando o script):
 
 ```
 Segredo real (para conferencia): 123456789
@@ -261,6 +267,17 @@ Produto dos primos: 10131543907
     -> secret mod p =   1 (esperado   1) [OK] (8 consulta(s))
 
   [... primos 19, 23, 29, 31, 37, 41 seguem o mesmo formato ...]
+
+Reconstruindo o segredo via CRT:
+    M (produto de todos os primos): 10131543907
+    p= 17: resto=  1 | M_i=M/17=595973171 | inverso de M_i mod 17 = 3 | contribuicao = 1787919513
+    p= 19: resto= 14 | M_i=M/19=533239153 | inverso de M_i mod 19 = 7 | contribuicao = 1599717459
+    p= 23: resto= 11 | M_i=M/23=440501909 | inverso de M_i mod 23 = 11 | contribuicao = 2643011454
+    p= 29: resto= 19 | M_i=M/29=349363583 | inverso de M_i mod 29 = 10 | contribuicao = 5589817328
+    p= 31: resto=  2 | M_i=M/31=326823997 | inverso de M_i mod 31 = 19 | contribuicao = 2287767979
+    p= 37: resto= 36 | M_i=M/37=273825511 | inverso de M_i mod 37 = 35 | contribuicao = 547651022
+    p= 41: resto=  8 | M_i=M/41=247110827 | inverso de M_i mod 41 = 3 | contribuicao = 5930659848
+    soma de todas as contribuicoes, mod M: 123456789
 
 Segredo reconstruido via CRT: 123456789
 Segredo real:                 123456789
@@ -283,7 +300,7 @@ Resumo dos 7 primos (resultado final de cada tabela completa):
 
 **Nota sobre o número de consultas variar por primo:** o processo é probabilístico — um candidato errado só é eliminado quando o número impossível (`p-1`) aparece por acaso em algum coeficiente reconstruído naquela rodada. Às vezes isso demora mais (`p=31` precisou de 19 rodadas), às vezes menos (`p=19` precisou de só 5) — não é um erro, é o comportamento esperado do ataque.
 
-A tabela detalhada só é impressa para primos pequenos (`p <= 50`, via o parâmetro `verboso` de `recupera_secret_mod_p`), para não poluir a saída caso o script seja usado com primos maiores.
+Ambas as tabelas detalhadas (eliminação de candidatos e reconstrução via CRT) só são impressas quando o número de primos é pequeno (`<= 50`), via o parâmetro `verboso` de `recupera_secret_mod_p` e de `crt`, para não poluir a saída caso o script seja usado com um segredo maior (mais primos).
 
 Evidência adicional de escala real, com `demo_share_attack_texto.py`:
 
