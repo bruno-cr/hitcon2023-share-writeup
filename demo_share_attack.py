@@ -5,10 +5,13 @@ Reimplementa o SecretSharing exatamente como no server.py original
 o ataque completo: forca bruta de a0 mod p usando a testemunha (p-1)
 + CRT para juntar varios modulos.
 
-Uso: python3 demo_share_attack.py
+Uso:
+  python3 demo_share_attack.py                # usa o secret de demonstracao (123456789)
+  python3 demo_share_attack.py 987654321       # usa o secret inteiro informado
 """
 
 import random
+import sys
 import time
 from math import gcd
 
@@ -136,16 +139,86 @@ def recupera_secret_mod_p(secret_real, p, n=14, max_consultas=200, verboso=False
 # 5) CRT: juntar varios "secret mod p_i" num unico valor
 # -----------------------------------------------------------------
 
-def crt(restos, modulos):
+def crt(restos, modulos, verboso=False):
     M = 1
     for m in modulos:
         M *= m
+
+    if verboso:
+        print(f"    M (produto de todos os primos): {M}")
+
     X = 0
     for r_i, m_i in zip(restos, modulos):
         M_i = M // m_i
         inv = pow(M_i, -1, m_i)
+        contribuicao = (r_i * M_i * inv) % M
         X += r_i * M_i * inv
-    return X % M
+
+        if verboso:
+            print(f"    p={m_i:3d}: resto={r_i:3d} | M_i=M/{m_i}={M_i} | "
+                  f"inverso de M_i mod {m_i} = {inv} | contribuicao = {contribuicao}")
+
+    resultado = X % M
+    if verboso:
+        print(f"    soma de todas as contribuicoes, mod M: {resultado}")
+
+    return resultado
+
+
+# -----------------------------------------------------------------
+# 5b) Geracao automatica de primos suficientes (para secrets maiores
+#     que o de demonstracao, passados via linha de comando)
+# -----------------------------------------------------------------
+
+def eh_primo(numero, rodadas=20):
+    """Teste de primalidade de Miller-Rabin (Python puro, sem libs)."""
+    if numero < 2:
+        return False
+    for p in (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37):
+        if numero % p == 0:
+            return numero == p
+    d = numero - 1
+    s = 0
+    while d % 2 == 0:
+        d //= 2
+        s += 1
+    for _ in range(rodadas):
+        a = random.randrange(2, numero - 1)
+        x = pow(a, d, numero)
+        if x in (1, numero - 1):
+            continue
+        for _ in range(s - 1):
+            x = pow(x, 2, numero)
+            if x == numero - 1:
+                break
+        else:
+            return False
+    return True
+
+
+def proximo_primo(a_partir_de):
+    candidato = a_partir_de + 1
+    if candidato <= 2:
+        return 2
+    if candidato % 2 == 0:
+        candidato += 1
+    while not eh_primo(candidato):
+        candidato += 2
+    return candidato
+
+
+def gera_primos_suficientes(valor_alvo, primo_minimo=14):
+    """Gera primos crescentes (> primo_minimo, por causa do
+    `int(13.37) < n < p` do servidor original) ate o produto
+    ultrapassar valor_alvo."""
+    primos = []
+    produto = 1
+    candidato = primo_minimo
+    while produto <= valor_alvo:
+        candidato = proximo_primo(candidato)
+        primos.append(candidato)
+        produto *= candidato
+    return primos
 
 
 # -----------------------------------------------------------------
@@ -157,15 +230,27 @@ if __name__ == "__main__":
 
     random.seed(1337)  # reprodutibilidade da demo
 
-    # Em uma demo local, usamos um "secret" pequeno para o ataque
-    # rodar em segundos. No desafio real, o secret e um inteiro de
-    # 256 bits (32 bytes aleatorios) -- o metodo e IDENTICO, so
-    # precisa de mais primos ate o produto passar de 2**256.
-    secret_real = 123456789
+    # Lista fixa de primos pequenos, usada com o secret de demonstracao
+    # (rapida, ~0.3s). Se um secret diferente for passado por linha de
+    # comando, os primos sao gerados automaticamente ate o produto
+    # ultrapassar esse novo valor (pode demorar mais).
+    PRIMOS_PADRAO = [17, 19, 23, 29, 31, 37, 41]
+    SECRET_PADRAO = 123456789
 
-    # Primos escolhidos pelo atacante (precisam ser > 13, por causa
-    # da checagem `13 < n < p` no servidor original, com n=14 fixo)
-    primos = [17, 19, 23, 29, 31, 37, 41]
+    if len(sys.argv) > 1:
+        secret_real = int(sys.argv[1])
+        produto_padrao = 1
+        for p in PRIMOS_PADRAO:
+            produto_padrao *= p
+        if secret_real < produto_padrao:
+            # o secret informado ainda cabe na lista padrao de primos
+            primos = PRIMOS_PADRAO
+        else:
+            # secret maior -> gera primos novos, o suficiente para cobrir
+            primos = gera_primos_suficientes(secret_real)
+    else:
+        secret_real = SECRET_PADRAO
+        primos = PRIMOS_PADRAO
 
     produto = 1
     for p in primos:
@@ -173,7 +258,7 @@ if __name__ == "__main__":
     assert produto > secret_real, "Produto dos primos precisa ultrapassar o segredo"
 
     print(f"Segredo real (para conferencia): {secret_real}")
-    print(f"Primos escolhidos: {primos}")
+    print(f"Primos escolhidos ({len(primos)}): {primos}")
     print(f"Produto dos primos: {produto}\n")
 
     restos = []
@@ -189,7 +274,8 @@ if __name__ == "__main__":
               f"[{status}] ({n_consultas} consulta(s))\n")
         restos.append(r)
 
-    segredo_reconstruido = crt(restos, primos)
+    print("Reconstruindo o segredo via CRT:")
+    segredo_reconstruido = crt(restos, primos, verboso=(len(primos) <= LIMITE_VERBOSO))
     print(f"\nSegredo reconstruido via CRT: {segredo_reconstruido}")
     print(f"Segredo real:                 {secret_real}")
     assert segredo_reconstruido == secret_real, "FALHA: segredo nao bateu!"
