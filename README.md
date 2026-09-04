@@ -69,6 +69,7 @@ $$
 Nesse polinômio, $a_0$ representa o segredo, enquanto os demais coeficientes $(a_1, a_2, \ldots, a_{k-1})$ são escolhidos aleatoriamente. Como $f(0) = a_0$, o segredo corresponde ao valor do polinômio no ponto $x=0$.
 
 Para gerar os shares, são selecionados valores distintos de $x$ e calculados os respectivos valores de $f(x)$. Cada share é, portanto, representado por um ponto do polinômio:
+
 $$
 (x_i, f(x_i))
 $$
